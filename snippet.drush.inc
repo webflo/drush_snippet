@@ -19,8 +19,8 @@ function snippet_drush_command() {
       'format' => 'format plugin'
     ),
     'examples' => array(
-      'Hooks for PhpStorm' => 'drush snippet-generate --type=hook --write=/tmp/d7 --format=PhpStorm',
-      'Theme function so for TextMate' => 'drush snippet-generate --type=theme --write=/tmp/d6 --format=TextMate',
+      'Hooks for PhpStorm' => 'drush snippet-generate --type=hook --output=/tmp/d7 --format=PhpStorm',
+      'Theme function so for TextMate' => 'drush snippet-generate --type=theme --output=/tmp/d6 --format=TextMate',
     ),
   );
 
