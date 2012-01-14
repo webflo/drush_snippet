@@ -1,66 +1,40 @@
 <?php
 /**
  * @file
- * TextMate Template Generator for Drush
+ * Snippet/template generator for Drush
  */
 
 /**
- * Implementation of hook_drush_command().
- *
- * @See drush_parse_command() for a list of recognized keys.
- *
- * @return
- *   An associative array describing each command.
+ * Implements hook_drush_command().
  */
-function textmate_drush_command() {
+function snippet_drush_command() {
   $items = array();
 
-  $items['tm-generate'] = array(
+  $items['snippet-generate'] = array(
     'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
-    'description' => "Generate TextMate Snippets.",
+    'description' => "Generate snippets.",
     'options' => array(
-      'write' => 'File directory',
+      'output' => 'A directory of file',
       'type' => 'hook or theme',
+      'format' => 'format plugin'
     ),
     'examples' => array(
-      'drush tm-generate --write=/tmp/d7 --type=hook',
-      'drush tm-generate --write=/tmp/d6 --type=theme',
+      'Hooks for PhpStorm' => 'drush snippet-generate --type=hook --write=/tmp/d7 --format=PhpStorm',
+      'Theme function so for TextMate' => 'drush snippet-generate --type=theme --write=/tmp/d6 --format=TextMate',
     ),
-  );
-
-  $items['tm-format'] = array(
-    'description' => "Generate TextMate completion.",
-    'options' => array(
-      'plist' => 'plist completion',
-      'txt' => 'txt hook list',
-      'textmate' => 'Path to textmate bundle',
-      'filter' => 'all, new, existing. all is default',
-    ),
-    'examples' => array(
-      'drush tm-format --format=plist --textmate=\'/Users/florian/Library/Application Support/TextMate/Bundles/php_drupal\'',
-      'drush tm-format --format=txt --filter=new --textmate=\'/Users/florian/Library/Application Support/TextMate/Bundles/php_drupal\''
-    )
   );
 
   return $items;
 }
 
 /**
- * Implementation of hook_drush_help().
+ * Implements of hook_drush_help().
  *
- * This function is called whenever a drush user calls
- * 'drush help <name-of-your-command>'
- *
- * @param
- *   A string with the help section (prepend with 'drush:')
- *
- * @return
- *   A string with the help text for your command.
  */
-function textmate_drush_help($section) {
+function snippet_drush_help($section) {
   switch ($section) {
-    case 'drush:textmate':
-      return dt("Generate TextMate Snippets from current drupal installation.");
+    case 'drush:snippet-generate':
+      return dt("Generate snippets from your Drupal installation.");
   }
 }
 
@@ -103,10 +77,28 @@ function drush_textmate_tm_generate() {
 }
 
 /**
+ * Generate snippets. Drush callback.
+ */
+function drush_snippet_generate() {
+  require_once dirname(__FILE__) . '/SnippetGenerator.inc';
+
+  $version = drush_drupal_major_version();
+  $type = drush_get_option('type');
+  $dir = drush_get_option('output');
+  $format = drush_get_option('format');
+
+  $class = 'SnippetGenerator' . $format;
+  $generator = new $class($type, $version);
+  $generator->find();
+  $functions = $generator->parse();
+  $generator->write($dir, $functions);
+}
+
+/**
  * Drush TextMate-format command callback.
  */
 function drush_textmate_tm_format() {
-  $version = drush_drupal_major_version();
+  $version = drush_get_option('version');
   $textmate = drush_get_option('textmate');
   $type = drush_get_option('type');
   if (is_string(drush_get_option('write')) && $dir = realpath(drush_get_option('write'))) {
@@ -126,7 +118,6 @@ function drush_textmate_tm_format() {
     }
   }
 
-  $functions = drush_textmate_find_functions($type, $version);
   $output = array();
 
   if (!empty($textmate)) {
@@ -140,7 +131,7 @@ function drush_textmate_tm_format() {
   foreach($scan as $file) {
     list($file_function, $file_version) = explode('.', $file->basename);
     list($file_type) = explode('_', $file->basename);
-    if ($file_type == $type) {
+    if (($file_type == 'hook' || $file_type == 'theme') && (($file_version == $version) || !is_numeric($file_version))) {
       $function[$file_function] = $file_function;
     }
   }
@@ -164,6 +155,8 @@ function drush_textmate_tm_format() {
       $function = array_intersect($function, $existing_commands);
       break;
   }
+
+  sort($function);
 
   if (drush_get_option('format') == 'plist') {
     foreach($function as $name) {
